@@ -60,8 +60,34 @@ object Student extends Controller {
     }
   }
 
+  def delete(id: Int) = Action {
+    Database.forDataSource(DB.getDataSource()) withSession {
+
+      val delStQuery = for {
+        st <- StudentsTeachers if (st.studentId is id)
+      } yield st
+
+      val delQuery = for {
+        student <- Students if (student.id is id)
+      } yield student
+
+
+      val delUserQuery = for {
+        st <- Users if (st.id is id)
+      } yield st
+
+      delStQuery.delete
+      if (delQuery.delete > 0) {
+        delUserQuery.delete
+      }
+
+
+      Ok("Deleted  Student")
+    }
+  }
+
   /** Updates a teacher */
-  def put(id: Long) = Action {
+  def put(id: Int) = Action {
      val teacher = Json.obj(
        "id" -> 2,
        "name" -> "NOT IMPLEMENTED",

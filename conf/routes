@@ -9,11 +9,13 @@ GET     /teachers                   controllers.Teacher.getAll
 GET     /teachers/:id               controllers.Teacher.get(id: Int)
 PUT     /teachers/:id               controllers.Teacher.put(id: Int)
 POST    /teachers                   controllers.Teacher.post
+DELETE  /teachers/:id               controllers.Teacher.delete(id: Int)
 
 GET     /students                   controllers.Student.getAll
 GET     /students/:id               controllers.Student.get(id: Int)
 PUT     /students/:id               controllers.Student.put(id: Int)
 POST    /students                   controllers.Student.post
+DELETE  /students/:id               controllers.Student.delete(id: Int)
 
 GET     /students/:id/teachers      controllers.Student.getTeachers(id: Int)
 PUT     /students/:id/teachers      controllers.Student.putTeacher(id: Int)

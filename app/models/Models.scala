@@ -65,8 +65,6 @@ object Teachers extends Table[(Int)]("teachers") {
     userById(id).first
   }
 
-
-
 }
 
 object Students extends Table[(Int)]("students") {

@@ -4,7 +4,7 @@ import play.api._
 import play.api.mvc._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import models.{JsonModels, Users, Teachers}
+import models.{StudentsTeachers, JsonModels, Users, Teachers}
 import scala.slick.driver.PostgresDriver.simple._
 import Database.threadLocalSession
 import play.api.Play.current
@@ -58,6 +58,32 @@ object Teacher extends Controller {
      )
 
     Ok(teacher)
+  }
+
+  def delete(id: Int) = Action {
+    Database.forDataSource(DB.getDataSource()) withSession {
+
+      val delStQuery = for {
+        st <- StudentsTeachers if (st.teacherId is id)
+      } yield st
+
+      delStQuery.delete
+
+      val delQuery = for {
+        teacher <- Teachers if (teacher.id is id)
+      } yield teacher
+      val num = delQuery.delete
+
+      if (num > 0) {
+        val delUserQuery = for {
+          u <- Users if (u.id is id)
+        } yield u
+
+        delUserQuery.delete
+      }
+      Ok("Deleted  Teacher")
+
+    }
   }
 
   def post = Action { request =>
