@@ -1,4 +1,5 @@
 import org.specs2.mutable.Specification
+import play.api.libs.json.{Json, JsObject}
 import play.api.test.{FakeRequest, FakeApplication}
 import play.api.test.Helpers._
 
@@ -20,14 +21,13 @@ class TeacherSpec extends Specification {
     "can post and get one teacher" in {
       running(FakeApplication()) {
         val post = FakeRequest(POST, "/teachers")
-        post.withBody(
-          """
-            |{
-            |   "name" : "Test User",
-            |   "password" : "password123",
-            |   "email" : "myemail@example.com"
-            |}
-          """.stripMargin)
+        post.withJsonBody(
+          Json.obj(
+            "name" -> "Test User",
+            "password" -> "password123",
+            "email" -> "myemail@example.com"
+          )
+        )
 
         val teacherPost = route(post).get
         status(teacherPost) must equalTo(OK)

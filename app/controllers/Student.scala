@@ -1,8 +1,15 @@
 package controllers
 
 import play.api.mvc._
-import play.api.libs.json._
 import scala.slick.driver.PostgresDriver.simple._
+import play.api.libs.json.Reads._
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import play.api.db.DB
+import models.{Students, Teachers, Users}
+import Database.threadLocalSession
+import play.api.Play.current
+
 
 
 /**
@@ -11,15 +18,18 @@ import scala.slick.driver.PostgresDriver.simple._
  */
 object Student extends Controller {
 
-  def get(id: Long) = Action {
-    val teacher = Json.obj(
-      "id" -> id,
-      "name" -> "Travis",
-      "email" -> "travis@gamil.com",
-      "token" -> "123345"
-    )
+  def get(id: Int) = Action {
+    Database.forDataSource(DB.getDataSource()) withSession {
 
-    Ok(teacher)
+      val u = Users.byId(id)
+
+      val student = Json.obj(
+        "id" -> u._1,
+        "name" -> u._2,
+        "email" -> u._3
+      )
+      Ok(student)
+    }
 
   }
 
@@ -55,15 +65,41 @@ object Student extends Controller {
     Ok(teacher)
   }
 
-  def post = Action {
-    val teacher = Json.obj(
-      "id" -> 2,
-      "name" -> "Travis",
-      "email" -> "travis@gamil.com",
-      "token" -> "123345"
-    )
+  def post = Action { request =>
 
-    Ok(teacher)
+    val input = (
+      (__ \ 'name).read[String] and
+        (__ \ 'password).read[String] and
+        (__ \ 'email).read[String]
+      ) tupled
+
+
+
+    request.body.asJson.map( { json =>
+      json.validate[(String, String, String)](input).map {
+        case (name, password, email) => {
+
+          Database.forDataSource(DB.getDataSource()) withSession {
+
+            val (id, token) = Users.encryptInsert(name, password, email)
+
+            Students.insert(id)
+
+            Ok(Json.obj(
+              "id" -> id,
+              "name" -> name,
+              "email" -> email,
+              "token" -> token
+            ))
+          }
+
+        }
+      }.recoverTotal{
+        e => BadRequest("Detected error:"+ JsError.toFlatJson(e))
+      }
+    }).getOrElse {
+      BadRequest("Expecting Json data")
+    }
 
   }
 

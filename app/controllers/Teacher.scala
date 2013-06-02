@@ -2,20 +2,13 @@ package controllers
 
 import play.api._
 import play.api.mvc._
-import play.api.libs.json.{JsValue, Json}
-import org.codehaus.jackson.node.ObjectNode
-import play.api.libs.json._
-import play.api.libs.json.util._
 import play.api.libs.json.Reads._
-import play.api.libs.json.Writes._
 import play.api.libs.json._
 import models.{Users, Teachers}
-import java.util.Date
 import scala.slick.driver.PostgresDriver.simple._
 import Database.threadLocalSession
 import play.api.Play.current
 import play.api.db.DB
-import org.apache.commons.codec.digest.DigestUtils
 
 
 // you need this import to have combinators
@@ -31,12 +24,7 @@ object Teacher extends Controller {
   def get(id: Int) = Action {
     Database.forDataSource(DB.getDataSource()) withSession {
 
-      val userById = for {
-        id <- Parameters[Int]
-        u <- Users if u.id is id
-      } yield (u.id, u.name, u.email)
-
-      val u = userById(id).first
+      val u = Users.byId(id)
 
       val teacher = Json.obj(
           "id" -> u._1,
@@ -48,7 +36,14 @@ object Teacher extends Controller {
   }
 
 
-  def getAll = Action {
+  def getAll = Action { request =>
+
+//    val userByToken = for {
+//      token <- Parameters[String]
+//      u <- Users if u.token == token
+//    }
+//
+//    request.headers.get("Authorization").map()
 
     val teachers = Json.obj(
       "teachers" -> Json.arr(
@@ -94,16 +89,13 @@ object Teacher extends Controller {
 
 
     request.body.asJson.map( { json =>
-      log.info("json body:" + json)
       json.validate[(String, String, String)](input).map {
         case (name, password, email) => {
-          val salt = new String(DigestUtils.sha1Hex(new Date toString))
-          val sha1pass = new String(DigestUtils.sha1Hex(password + salt))
-          val token = new String(DigestUtils.sha1Hex(new Date toString))
 
           Database.forDataSource(DB.getDataSource()) withSession {
 
-            val id = Users.forInsert.insert(name, email, sha1pass, salt, token)
+            val (id, token) = Users.encryptInsert(name, password, email)
+
             Teachers.insert(id)
 
             Ok(Json.obj(

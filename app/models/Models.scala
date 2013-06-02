@@ -1,6 +1,11 @@
 package models
 
 import scala.slick.driver.PostgresDriver.simple._
+import java.lang.String
+import scala.Predef.String
+import org.apache.commons.codec.digest.DigestUtils
+import java.util.Date
+import play.api.libs.json.Json
 
 /**
  * User: travis.stevens@gaiam.com
@@ -15,6 +20,25 @@ object Users extends Table[(Int, String, String, String, String, String)]("users
   def token = column[String]("token")
   def forInsert = name ~ password ~ email ~ salt ~ token returning id
   def *  = id ~ name ~ email ~ password ~ salt ~ token
+
+  /** Insert generating salted password and returning Id and Token */
+  def encryptInsert(n: String, e: String, p: String)(implicit ses: Session): (Int, String) = {
+    val salt = new String(DigestUtils.sha1Hex(new Date toString))
+    val sha1pass = new String(DigestUtils.sha1Hex(p + salt))
+    val token = new String(DigestUtils.sha1Hex(new Date toString))
+    (forInsert.insert(n, sha1pass, e, salt, token), token)
+
+  }
+
+  /** find id, name, email by id */
+  def byId(id: Int)(implicit sess: Session) = {
+    val userById = for {
+      id <- Parameters[Int]
+      u <- Users if u.id is id
+    } yield (u.id, u.name, u.email)
+
+    userById(id).first
+  }
 
 }
 
