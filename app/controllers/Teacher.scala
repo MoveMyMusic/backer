@@ -24,7 +24,7 @@ object Teacher extends Controller {
   def get(id: Int) = Action {
     Database.forDataSource(DB.getDataSource()) withSession {
 
-      val u = Users.byId(id)
+      val u = Teachers.byId(id)
 
       val teacher = Json.obj(
           "id" -> u._1,

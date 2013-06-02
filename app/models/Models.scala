@@ -55,6 +55,17 @@ object Teachers extends Table[(Int)]("teachers") {
     t <- Teachers if t.id is u.id
   } yield (u.id, u.name, u.email)
 
+  def byId(id: Int)(implicit sess: Session) = {
+    val userById = for {
+      id <- Parameters[Int]
+      u <- Users if u.id is id
+      t <- Teachers if t.id is u.id
+    } yield (u.id, u.name, u.email)
+
+    userById(id).first
+  }
+
+
 
 }
 
@@ -62,6 +73,16 @@ object Students extends Table[(Int)]("students") {
   def id = column[Int]("id", O.PrimaryKey)
   def user = foreignKey("user_fk", id, Users)(_.id)
   def * = id
+
+  def byId(id: Int)(implicit sess: Session) = {
+    val userById = for {
+      id <- Parameters[Int]
+      u <- Users if u.id is id
+      s <- Students if s.id is u.id
+    } yield (u.id, u.name, u.email)
+
+    userById(id).first
+  }
 }
 
 object SaveData extends Table[(Option[Int], Int, String)]("save_data") {
