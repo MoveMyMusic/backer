@@ -9,7 +9,6 @@ import play.api.db.DB
 import models._
 import Database.threadLocalSession
 import play.api.Play.current
-import scala.Some
 
 
 /**
@@ -30,7 +29,6 @@ object Student extends Controller {
       )
       Ok(student)
     }
-
   }
 
   def getAll = Action { request =>

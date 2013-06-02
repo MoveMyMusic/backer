@@ -16,4 +16,12 @@ object JsonModels {
     )
   }
 
+  def saveData(id: Int, name: String, musicData: String) = {
+    Json.obj(
+      "id" -> id,
+      "name" -> name,
+      "musicData" -> musicData
+    )
+  }
+
 }

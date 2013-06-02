@@ -105,11 +105,15 @@ object StudentsTeachers extends Table[(Int, Int)]("students_teachers") {
 
 }
 
-object SaveData extends Table[(Option[Int], Int, String)]("save_data") {
+object MusicData extends Table[(Int, Int, String, String)]("save_data") {
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
-  def user_id = column[Int]("user_id")
-  def user = foreignKey("user_fk", user_id, Users)(_.id)
+  def userId = column[Int]("user_id")
+  def user = foreignKey("user_fk", userId, Users)(_.id)
+  def name = column[String]("name")
   def saveData = column[String]("save_data")
 
-  def * = id.? ~ user_id ~ saveData
+  def * = id ~ userId ~ name ~ saveData
+
+  val doInsert = name ~ saveData ~ userId returning id
+
 }
