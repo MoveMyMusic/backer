@@ -76,13 +76,28 @@ object Students extends Table[(Int)]("students") {
 
   def byId(id: Int)(implicit sess: Session) = {
     val userById = for {
-      id <- Parameters[Int]
-      u <- Users if u.id is id
+      i <- Parameters[Int]
+      u <- Users if u.id is i
       s <- Students if s.id is u.id
     } yield (u.id, u.name, u.email)
 
     userById(id).first
   }
+}
+
+object StudentsTeachers extends Table[(Int, Int)]("students_teachers") {
+  def studentId = column[Int]("student_id")
+  def teacherId = column[Int]("teacher_id")
+  def * = studentId ~ teacherId
+
+  val forInsert = for {
+    (sid, tid) <- Parameters[(Int, Int)]
+    student <- Students if student.id is sid
+    teacher <- Teachers if teacher.id is tid
+  } yield {
+    (student.id, teacher.id)
+  }
+
 }
 
 object SaveData extends Table[(Option[Int], Int, String)]("save_data") {

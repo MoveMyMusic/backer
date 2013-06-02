@@ -6,10 +6,10 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.db.DB
-import models.{Students, Teachers, Users}
+import models._
 import Database.threadLocalSession
 import play.api.Play.current
-
+import scala.Some
 
 
 /**
@@ -103,18 +103,41 @@ object Student extends Controller {
 
   }
 
-  def getTeachers(id: Long) = Action {
-    val teachers = Json.obj(
-      "teachers" -> Json.arr(1)
-    )
-    Ok(teachers)
+  def getTeachers(studentId: Int) = Action { request =>
+
+    val teacherQuery = for {
+      sid <- Parameters[Int]
+      student <- Students if (student.id is sid)
+      st <- StudentsTeachers if (st.studentId is student.id)
+      teacher <- Teachers if (teacher.id is st.teacherId)
+      user <- Users if (user.id is teacher.id)
+    } yield (user.id, user.name, user.email)
+
+    Database.forDataSource(DB.getDataSource()) withSession {
+      val teachers = teacherQuery.list(studentId).map(t => JsonModels.userJson(t._1, t._2, t._3))
+      Ok(JsArray(teachers))
+    }
+
   }
 
-  def putTeachers(id: Long) = Action {
-    val teachers = Json.obj(
-      "teachers" -> Json.arr(1,2)
-    )
-    Ok(teachers)
+  def putTeachers(studentId: Int) = Action { request =>
+    val input = (
+      (__ \ 'teacherId).readNullable[Int]
+      )
+
+    request.body.asJson.map( { json =>
+      json.validate[(Option[Int])](input).map {
+        case (Some(teacherId)) => {
+
+          Database.forDataSource(DB.getDataSource()) withSession {
+            val res = StudentsTeachers.forInsert.first(studentId, teacherId)
+            StudentsTeachers.insert(res._1, res._2)
+          }
+        }
+      }
+    })
+
+    Ok("Added teacher.")
   }
 
   def delTeachers(studentId: Long, teacherId: Long) = Action {
