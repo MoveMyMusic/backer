@@ -35,29 +35,38 @@ object Student extends Controller {
 
   def getAll = Action { request =>
 
-    val students = Json.obj(
-      "students" -> Json.arr(
-        Json.obj(
-          "id" -> 1,
-          "name" -> "Johnny",
-          "token" -> "12345"
-        ),
-        Json.obj(
-          "id" -> 2,
-          "name" -> "Suzie",
-          "token" -> "12345"
-        )
-      )
-    )
+    Database.forDataSource(DB.getDataSource()) withSession {
 
-    Ok(students)
+        val students = request.getQueryString("name").map(name => {
+        val studentQ = for {
+          user <- Users if user.name.toLowerCase like "%" + name.toLowerCase + "%"
+          student <- Students if user.id is student.id
+        } yield (user.id, user.name, user.email)
+
+        studentQ.list
+      }).orElse(request.getQueryString("teacherId").map(Integer.parseInt(_)).map(teacherId => {
+        val studentQ = for {
+          tid <- Parameters[Int]
+          user <- Users
+          student <- Students if (student.id is user.id)
+          st <- StudentsTeachers if ((st.teacherId is tid) && (st.studentId is student.id))
+        } yield (user.id, user.name, user.email)
+
+        studentQ(teacherId).list
+
+      })).getOrElse {
+        Students.all.list
+      }.map(u => JsonModels.userJson(u._1, u._2, u._3))
+
+      Ok(JsArray(students))
+    }
   }
 
   /** Updates a teacher */
   def put(id: Long) = Action {
      val teacher = Json.obj(
        "id" -> 2,
-       "name" -> "Travis",
+       "name" -> "NOT IMPLEMENTED",
        "email" -> "travis@gamil.com",
        "token" -> "123345"
      )
@@ -70,18 +79,18 @@ object Student extends Controller {
     val input = (
       (__ \ 'name).read[String] and
         (__ \ 'password).readNullable[String] and
-        (__ \ 'email).read[String]
+        (__ \ 'email).readNullable[String]
       ) tupled
 
 
 
     request.body.asJson.map( { json =>
-      json.validate[(String, Option[String], String)](input).map {
+      json.validate[(String, Option[String], Option[String])](input).map {
         case (name, password, email) => {
 
           Database.forDataSource(DB.getDataSource()) withSession {
 
-            val (id, token) = Users.encryptInsert(name, password, email)
+            val (id, token) = Users.encryptInsert(name, email, password.getOrElse(""))
 
             Students.insert(id)
 
@@ -120,13 +129,15 @@ object Student extends Controller {
 
   }
 
-  def putTeachers(studentId: Int) = Action { request =>
-    val input = (
-      (__ \ 'teacherId).readNullable[Int]
-      )
+  val teacherIdInput = (
+    (__ \ 'teacherId).readNullable[Int]
+    )
+
+  def putTeacher(studentId: Int) = Action { request =>
+
 
     request.body.asJson.map( { json =>
-      json.validate[(Option[Int])](input).map {
+      json.validate[(Option[Int])](teacherIdInput).map {
         case (Some(teacherId)) => {
 
           Database.forDataSource(DB.getDataSource()) withSession {
@@ -137,14 +148,20 @@ object Student extends Controller {
       }
     })
 
-    Ok("Added teacher.")
+    Ok("Added teacher to student.")
   }
 
-  def delTeachers(studentId: Long, teacherId: Long) = Action {
-    val teachers = Json.obj(
-      "teachers" -> Json.arr(1)
-    )
-    Ok(teachers)
+  def delTeacher(studentId: Int, teacherId: Int) = Action { request =>
+
+    Database.forDataSource(DB.getDataSource()) withSession {
+      val delQuery = for {
+        st <- StudentsTeachers if ( (st.studentId is studentId) && (st.teacherId is teacherId))
+      } yield st
+
+      delQuery.delete
+      Ok("Removed teacher from student.")
+
+    }
   }
 
 }

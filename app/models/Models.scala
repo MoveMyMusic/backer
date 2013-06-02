@@ -83,6 +83,11 @@ object Students extends Table[(Int)]("students") {
 
     userById(id).first
   }
+
+  val all = for {
+    u <- Users
+    s <- Students if s.id is u.id
+  } yield (u.id, u.name, u.email)
 }
 
 object StudentsTeachers extends Table[(Int, Int)]("students_teachers") {

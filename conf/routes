@@ -16,8 +16,8 @@ PUT     /students/:id               controllers.Student.put(id: Int)
 POST    /students                   controllers.Student.post
 
 GET     /students/:id/teachers      controllers.Student.getTeachers(id: Int)
-PUT     /students/:id/teachers      controllers.Student.putTeachers(id: Int)
-DELETE  /students/:studentId/teachers/:teacherId      controllers.Student.delTeachers(studentId: Int, teacherId: Int)
+PUT     /students/:id/teachers      controllers.Student.putTeacher(id: Int)
+DELETE  /students/:studentId/teachers/:teacherId      controllers.Student.delTeacher(studentId: Int, teacherId: Int)
 
 
 # Map static resources from the /public folder to the /assets URL path
