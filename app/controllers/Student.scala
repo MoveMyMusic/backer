@@ -2,12 +2,14 @@ package controllers
 
 import play.api.mvc._
 import play.api.libs.json._
+import scala.slick.driver.PostgresDriver.simple._
+
 
 /**
  * User: travis.stevens@gaiam.com
  * Date: 6/1/13
  */
-object Students extends Controller {
+object Student extends Controller {
 
   def get(id: Long) = Action {
     val teacher = Json.obj(

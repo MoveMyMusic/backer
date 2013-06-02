@@ -24,12 +24,18 @@ class TeacherSpec extends Specification {
           """
             |{
             |   "name" : "Test User",
-            |   "password" : "password123"
+            |   "password" : "password123",
+            |   "email" : "myemail@example.com"
             |}
           """.stripMargin)
 
         val teacherPost = route(post).get
         status(teacherPost) must equalTo(OK)
+        contentType(teacherPost) must beSome("application/json")
+
+        println("________________________________________________")
+        println(contentAsString(teacherPost))
+
 
         val teacherGet = route(FakeRequest(GET, "/teachers/7")).get
         status(teacherGet) must equalTo(OK)

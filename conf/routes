@@ -5,19 +5,19 @@
 # Home page
 GET     /                           controllers.Application.index
 
-GET     /teachers                   controllers.Teachers.getAll
-GET     /teachers/:id               controllers.Teachers.get(id: Long)
-PUT     /teachers/:id               controllers.Teachers.put(id: Long)
-POST    /teachers                   controllers.Teachers.post
+GET     /teachers                   controllers.Teacher.getAll
+GET     /teachers/:id               controllers.Teacher.get(id: Int)
+PUT     /teachers/:id               controllers.Teacher.put(id: Int)
+POST    /teachers                   controllers.Teacher.post
 
-GET     /students                   controllers.Students.getAll
-GET     /students/:id               controllers.Students.get(id: Long)
-PUT     /students/:id               controllers.Students.put(id: Long)
-POST    /students                   controllers.Students.post
+GET     /students                   controllers.Student.getAll
+GET     /students/:id               controllers.Student.get(id: Int)
+PUT     /students/:id               controllers.Student.put(id: Int)
+POST    /students                   controllers.Student.post
 
-GET     /students/:id/teachers      controllers.Students.getTeachers(id: Long)
-PUT     /students/:id/teachers      controllers.Students.putTeachers(id: Long)
-DELETE  /students/:studentId/teachers/:teacherId      controllers.Students.delTeachers(studentId: Long, teacherId: Long)
+GET     /students/:id/teachers      controllers.Student.getTeachers(id: Int)
+PUT     /students/:id/teachers      controllers.Student.putTeachers(id: Int)
+DELETE  /students/:studentId/teachers/:teacherId      controllers.Student.delTeachers(studentId: Int, teacherId: Int)
 
 
 # Map static resources from the /public folder to the /assets URL path
