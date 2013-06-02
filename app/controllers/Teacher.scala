@@ -4,7 +4,7 @@ import play.api._
 import play.api.mvc._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import models.{Users, Teachers}
+import models.{JsonModels, Users, Teachers}
 import scala.slick.driver.PostgresDriver.simple._
 import Database.threadLocalSession
 import play.api.Play.current
@@ -38,31 +38,14 @@ object Teacher extends Controller {
 
   def getAll = Action { request =>
 
-//    val userByToken = for {
-//      token <- Parameters[String]
-//      u <- Users if u.token == token
-//    }
-//
-//    request.headers.get("Authorization").map()
-
-    val teachers = Json.obj(
-      "teachers" -> Json.arr(
-        Json.obj(
-          "id" -> 1,
-          "name" -> "Travis",
-          "email" -> "travis@gmail.com",
-          "token" -> "12345"
-        ),
-        Json.obj(
-          "id" -> 2,
-          "name" -> "kiki",
-          "email" -> "travis@gmail.com",
-          "token" -> "12345"
-        )
-      )
-    )
-
-    Ok(teachers)
+    Database.forDataSource(DB.getDataSource()) withSession {
+        request.getQueryString("name").map(name => {
+        val teachers = Teachers.byNameSubstring(name.toLowerCase).list.map(user => JsonModels.userJson(user._1, user._2, user._3))
+        Ok(JsArray(teachers))
+      }).getOrElse {
+        Ok(JsArray(Teachers.all.list.map(user => JsonModels.userJson(user._1, user._2, user._3))))
+      }
+    }
   }
 
   /** Updates a teacher */
@@ -94,7 +77,7 @@ object Teacher extends Controller {
 
           Database.forDataSource(DB.getDataSource()) withSession {
 
-            val (id, token) = Users.encryptInsert(name, password, email)
+            val (id, token) = Users.encryptInsert(name, Some(email), password)
 
             Teachers.insert(id)
 

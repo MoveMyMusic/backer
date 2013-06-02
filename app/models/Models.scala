@@ -1,20 +1,17 @@
 package models
 
 import scala.slick.driver.PostgresDriver.simple._
-import java.lang.String
-import scala.Predef.String
 import org.apache.commons.codec.digest.DigestUtils
 import java.util.Date
-import play.api.libs.json.Json
 
 /**
  * User: travis.stevens@gaiam.com
  * Date: 6/1/13
  */
-object Users extends Table[(Int, String, String, String, String, String)]("users") {
+object Users extends Table[(Int, String, Option[String], String, String, String)]("users") {
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name")
-  def email = column[String]("email")
+  def email = column[Option[String]]("email")
   def password = column[String]("password")
   def salt = column[String]("salt")
   def token = column[String]("token")
@@ -22,7 +19,7 @@ object Users extends Table[(Int, String, String, String, String, String)]("users
   def *  = id ~ name ~ email ~ password ~ salt ~ token
 
   /** Insert generating salted password and returning Id and Token */
-  def encryptInsert(n: String, e: String, p: String)(implicit ses: Session): (Int, String) = {
+  def encryptInsert(n: String, e: Option[String], p: String)(implicit ses: Session): (Int, String) = {
     val salt = new String(DigestUtils.sha1Hex(new Date toString))
     val sha1pass = new String(DigestUtils.sha1Hex(p + salt))
     val token = new String(DigestUtils.sha1Hex(new Date toString))
@@ -46,6 +43,19 @@ object Teachers extends Table[(Int)]("teachers") {
   def id = column[Int]("id", O.PrimaryKey)
   def user = foreignKey("user_fk", id, Users)(_.id)
   def * = id
+
+  def byNameSubstring(name: String) = for {
+//    name <- Parameters[String]
+    u <- Users if u.name.toLowerCase like ("%" + name + "%")
+    t <- Teachers if t.id is u.id
+  } yield (u.id, u.name, u.email)
+
+  val all = for {
+    u <- Users
+    t <- Teachers if t.id is u.id
+  } yield (u.id, u.name, u.email)
+
+
 }
 
 object Students extends Table[(Int)]("students") {

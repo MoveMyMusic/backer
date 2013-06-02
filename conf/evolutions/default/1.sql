@@ -3,7 +3,7 @@
 create table users (
     id int NOT NULL unique,
     name varchar(40) NOT NULL,
-    email varchar(100),
+    email varchar(100) unique,
     password varchar(40) NOT NULL,
     salt varchar(40) NOT NULL,
     token varchar(40) NOT NULL

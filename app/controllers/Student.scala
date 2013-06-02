@@ -33,7 +33,7 @@ object Student extends Controller {
 
   }
 
-  def getAll = Action {
+  def getAll = Action { request =>
 
     val students = Json.obj(
       "students" -> Json.arr(
@@ -69,14 +69,14 @@ object Student extends Controller {
 
     val input = (
       (__ \ 'name).read[String] and
-        (__ \ 'password).read[String] and
+        (__ \ 'password).readNullable[String] and
         (__ \ 'email).read[String]
       ) tupled
 
 
 
     request.body.asJson.map( { json =>
-      json.validate[(String, String, String)](input).map {
+      json.validate[(String, Option[String], String)](input).map {
         case (name, password, email) => {
 
           Database.forDataSource(DB.getDataSource()) withSession {
