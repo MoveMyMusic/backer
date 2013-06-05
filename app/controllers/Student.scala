@@ -163,16 +163,16 @@ object Student extends Controller {
     request.body.asJson.map( { json =>
       json.validate[(Option[Int])](teacherIdInput).map {
         case (Some(teacherId)) => {
-
           Database.forDataSource(DB.getDataSource()) withSession {
             val res = StudentsTeachers.forInsert.first(studentId, teacherId)
             StudentsTeachers.insert(res._1, res._2)
           }
         }
+        case _ => //Ok("Nothing to do")
       }
     })
-
     Ok("Added teacher to student.")
+
   }
 
   def delTeacher(studentId: Int, teacherId: Int) = Action { request =>

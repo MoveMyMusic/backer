@@ -9,6 +9,8 @@ import scala.slick.driver.PostgresDriver.simple._
 import Database.threadLocalSession
 import play.api.Play.current
 import play.api.db.DB
+import scalaz.{NonEmptyList, Validation}
+import scalaz.syntax.validation._
 
 
 // you need this import to have combinators
@@ -40,7 +42,7 @@ object Teacher extends Controller {
 
     Database.forDataSource(DB.getDataSource()) withSession {
         request.getQueryString("name").map(name => {
-        val teachers = Teachers.byNameSubstring(name.toLowerCase).list.map(user => JsonModels.userJson(user._1, user._2, user._3))
+        val teachers = Teachers.byNameSubstring("%" + name.toLowerCase + "%").list.map(user => JsonModels.userJson(user._1, user._2, user._3))
         Ok(JsArray(teachers))
       }).getOrElse {
         Ok(JsArray(Teachers.all.list.map(user => JsonModels.userJson(user._1, user._2, user._3))))
@@ -85,6 +87,41 @@ object Teacher extends Controller {
 
     }
   }
+
+
+
+  type Name = String
+  type Email = String
+  type Password = String
+  type Token = String
+
+
+  object UserInsertAction extends JsonInput[(Name, String, String), (Int, Name, String, String)] with UserInsert {
+
+
+    val reads = (
+      (__ \ 'name).read[String] and
+        (__ \ 'password).read[String] and
+        (__ \ 'email).read[String]
+      ) tupled
+
+    val validation: ( (String, String, String) ) => Validation[JsError, (String, String, String)] = ((n: String, p: String,e: String) => (n,p,e).success).tupled
+
+    val slickBehavior = ((name: String, password: String, email: String) => {
+      val (id, token) = Users.encryptInsert(name, Some(email), password)
+      Teachers.insert(id)
+
+    }).tupled
+
+    val toJson = (id: Int, name: String, email: String, token: String) =>
+      Json.obj(
+        "id" -> id,
+        "name" -> name,
+        "email" -> email,
+        "token" -> token
+      )
+  }
+
 
   def post = Action { request =>
 

@@ -9,6 +9,7 @@ import java.util.Date
  * Date: 6/1/13
  */
 object Users extends Table[(Int, String, Option[String], String, String, String)]("users") {
+
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name")
   def email = column[Option[String]]("email")
@@ -44,9 +45,9 @@ object Teachers extends Table[(Int)]("teachers") {
   def user = foreignKey("user_fk", id, Users)(_.id)
   def * = id
 
-  def byNameSubstring(name: String) = for {
-//    name <- Parameters[String]
-    u <- Users if u.name.toLowerCase like ("%" + name + "%")
+  def byNameSubstring = for {
+    name <- Parameters[String]
+    u <- Users if u.name.toLowerCase like (name)
     t <- Teachers if t.id is u.id
   } yield (u.id, u.name, u.email)
 

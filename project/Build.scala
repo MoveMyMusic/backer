@@ -13,7 +13,11 @@ object ApplicationBuild extends Build {
     anorm,
    "com.typesafe.slick" %% "slick" % "1.0.0",
    "postgresql" % "postgresql" % "9.1-901-1.jdbc4",
-   "commons-codec" % "commons-codec" % "1.8"
+   "commons-codec" % "commons-codec" % "1.8",
+   "org.scalaz" %% "scalaz-core" % "7.0.0",
+   "org.typelevel" %% "scalaz-contrib-validation" % "0.1.4",
+   "com.chuusai" %% "shapeless" % "1.2.4"
+
   )
 
 
