@@ -2,73 +2,74 @@ package controllers
 
 import play.api.mvc.{Action, Result, Request, BodyParsers, Results}
 import play.api.libs.json.{JsValue, JsError, Reads}
-
-
-
-import scalaz.{Show, Semigroup, Validation}
-import scalaz.syntax.applicative._
-import scalaz.syntax.validation._
-import javax.sql.DataSource
-
-trait JsErrorZ {
-  implicit def jsErrorSemigroup: Semigroup[JsError] = new Semigroup[JsError] {
-    def append(s1: JsError, s2: => JsError): JsError = s1 ++ s2
-  }
-  implicit def jsShow: Show[JsError] = Show.shows(_.toString)
-
-}
-
-
-
-trait Data[I,O] {
-  def reads: Reads[I]
-  def validation: I => Validation[JsError, I]
-  def toJson: O => JsValue
-}
-
+import scala.slick.session.Session
 
 /**
- * User: travis.stevens@gaiam.com
- * Date: 6/5/13
+ * I: the input derived from Json
+ * O: The output from the insert used to feed the Json result
  */
-trait JsonInput[I,O] extends Data[I,O] with Results {
+trait JsonDb[I,O] {
+  def reads: Reads[I]
+  def toJson: O => JsValue
+  def session: Session
+}
 
-  def slickBehavior: I => O
-  def validation: I => Validation[JsError, I]
+/** jsonInsert trait creation.  Returns a ReaderMonad that expects a session as input. */
+object JsonInsert {
+  def apply[I,O](dataReads: Reads[I])(slickAction: I => Session => O)(oToJson: O => JsValue) =
+    scalaz.Reader[Session, JsonInsert[I,O]]( slickSession => new JsonInsert[I,O] {
+      val reads = dataReads
+      val toJson = oToJson
+      val slickBehavior = slickAction
+      val session = slickSession
+    })
+}
 
-  def action = (ds: DataSource) => Action[JsValue](BodyParsers.parse.json)(doRequest(_)(ds))
+/**
+ *  Trait defining behavior to take jason, insert it using slick and return json
+ */
+trait JsonInsert[I,O] extends JsonDb[I,O] with Results {
 
-  def doRequest(request: Request[JsValue])(implicit ds: DataSource): Result = {
-    request.body.validate(reads).map(i => {
-      validation(i).map(slickBehavior).map(toJson).fold(
-        errors => BadRequest(JsError.toFlatJson(errors)),
-        result => Ok(result)
-      )
-    }).recoverTotal{
-      e => BadRequest(JsError.toFlatJson(e))
-    }
+  def slickBehavior: I => Session => O
+
+  def action : Action[JsValue] = Action[JsValue](BodyParsers.parse.json)(doRequest(_))
+
+  def doRequest(request: Request[JsValue]): Result = {
+  request.body.validate(reads).map(slickBehavior(_)(session)).map(toJson).fold(
+      errors => BadRequest(JsError.toFlatJson(errors)),
+      result => Ok(result)
+    )
   }
 }
 
-trait JsonValInput[I,O,V] extends Data[I,O] with Results with JsErrorZ {
-  def action = (v: V, ds: DataSource) => Action[JsValue](BodyParsers.parse.json)(doRequest(_, v)(ds))
-
-  def slickBehavior: (I,V) => O
-  def validationForV: V => Validation[JsError, V]
-
-  private def allValidation(i: I, v: V) : Validation[JsError, (I,V)] = {
-    (validation(i) |@| validationForV(v) ) { (_,_) }
-  }
-
-  def doRequest(request: Request[JsValue], v: V)(implicit ds: DataSource): Result = {
-    request.body.validate(reads).map(i => {
-      allValidation(i, v).map(slickBehavior.tupled).map(toJson).fold(
-        errors => BadRequest(JsError.toFlatJson(errors)),
-        result => Ok(result)
-      )
-    }).recoverTotal{
-      e => BadRequest(JsError.toFlatJson(e))
-    }
-  }
-
+/*
+ *Creates an instance of JsonUpdate
+ */
+object JsonUpdate {
+  def apply[I,O,V](dataReads: Reads[I])(slickAction: I => (V,Session) => O)(oToJson: O => JsValue) =
+    scalaz.Reader[(V,Session), JsonUpdate[I,O,V]]( slickSession => new JsonUpdate[I,O,V] {
+      val reads = dataReads
+      val toJson = oToJson
+      val slickBehavior = slickAction
+      val session = slickSession._2
+      val v = slickSession._1
+    })
 }
+
+/**
+ * Trait defining behavior to take json and value that identifies a db object in order to update it and return json.
+ */
+trait JsonUpdate[I,O, V] extends JsonDb[I,O] with Results {
+  def slickBehavior: I => (V, Session) => O
+  def v: V
+
+  def action: Action[JsValue] = Action[JsValue](BodyParsers.parse.json){ request =>
+    request.body.validate(reads).map(slickBehavior(_)(v, session)).map(toJson).fold(
+      errors => BadRequest(JsError.toFlatJson(errors)),
+      result => Ok(result)
+    )
+  }
+}
+
+
+

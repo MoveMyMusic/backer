@@ -21,12 +21,18 @@ object Users extends Table[(Int, String, Option[String], String, String, String)
 
   /** Insert generating salted password and returning Id and Token */
   def encryptInsert(n: String, e: Option[String], p: String)(implicit ses: Session): (Int, String) = {
-    val salt = new String(DigestUtils.sha1Hex(new Date toString))
-    val sha1pass = new String(DigestUtils.sha1Hex(p + salt))
+    val (salt, sha1pass) = encryptPassword(p)
     val token = new String(DigestUtils.sha1Hex(new Date toString))
     (forInsert.insert(n, sha1pass, e, salt, token), token)
-
   }
+
+  /** Creates salt and encrypts the password with it */
+  def encryptPassword(p: String): (String, String) = {
+    val salt = new String(DigestUtils.sha1Hex(new Date toString))
+    (salt, encryptWithSalt(p,salt))
+  }
+
+  def encryptWithSalt(p: String, salt: String) = new String(DigestUtils.sha1Hex(p + salt))
 
   /** find id, name, email by id */
   def byId(id: Int)(implicit sess: Session) = {

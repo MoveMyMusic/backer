@@ -6,6 +6,7 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import models.{StudentsTeachers, JsonModels, Users, Teachers}
 import scala.slick.driver.PostgresDriver.simple._
+import scala.slick.session.Session
 import Database.threadLocalSession
 import play.api.Play.current
 import play.api.db.DB
@@ -51,15 +52,24 @@ object Teacher extends Controller {
   }
 
   /** Updates a teacher */
-  def put(id: Int) = Action {
-     val teacher = Json.obj(
-       "id" -> id,
-       "name" -> "Travis",
-       "email" -> "travis@gamil.com",
-       "token" -> "123345"
-     )
+  def put(id: Int) = {
+    val input = (
+      (__ \ 'name).readOpt[String] and
+        (__ \ 'password).readOpt[String] and
+        (__ \ 'email).readOpt[String]
+      ) tupled
 
-    Ok(teacher)
+    val update: (Option[String], Option[String], Option[String]) => (Int, Session) => (Int, String, Option[String], String) =
+      (name, password, email) => (id, session) => {
+        val q = for {
+//          t <- Teachers if t.id == id
+          u <- Users if u.id == id
+        } yield (u.name, u.password, u.email)
+        name.foreach(q.update(_))
+        password.foreach(q.update(_))
+        email.foreach(q.update(_))
+      }
+
   }
 
   def delete(id: Int) = Action {
@@ -90,41 +100,7 @@ object Teacher extends Controller {
 
 
 
-  type Name = String
-  type Email = String
-  type Password = String
-  type Token = String
-
-
-  object UserInsertAction extends JsonInput[(Name, String, String), (Int, Name, String, String)] with UserInsert {
-
-
-    val reads = (
-      (__ \ 'name).read[String] and
-        (__ \ 'password).read[String] and
-        (__ \ 'email).read[String]
-      ) tupled
-
-    val validation: ( (String, String, String) ) => Validation[JsError, (String, String, String)] = ((n: String, p: String,e: String) => (n,p,e).success).tupled
-
-    val slickBehavior = ((name: String, password: String, email: String) => {
-      val (id, token) = Users.encryptInsert(name, Some(email), password)
-      Teachers.insert(id)
-
-    }).tupled
-
-    val toJson = (id: Int, name: String, email: String, token: String) =>
-      Json.obj(
-        "id" -> id,
-        "name" -> name,
-        "email" -> email,
-        "token" -> token
-      )
-  }
-
-
-  def post = Action { request =>
-
+  def post = {
 
     val input = (
       (__ \ 'name).read[String] and
@@ -132,34 +108,15 @@ object Teacher extends Controller {
       (__ \ 'email).read[String]
     ) tupled
 
-
-
-    request.body.asJson.map( { json =>
-      json.validate[(String, String, String)](input).map {
-        case (name, password, email) => {
-
-          Database.forDataSource(DB.getDataSource()) withSession {
-
-            val (id, token) = Users.encryptInsert(name, Some(email), password)
-
-            Teachers.insert(id)
-
-            Ok(Json.obj(
-              "id" -> id,
-              "name" -> name,
-              "email" -> email,
-              "token" -> token
-            ))
-          }
-
-        }
-      }.recoverTotal{
-        e => BadRequest("Detected error:"+ JsError.toFlatJson(e))
-      }
-    }).getOrElse {
-      BadRequest("Expecting Json data")
+    val insert : (String, String, String) => Session => (Int, String, Option[String], String) = (name, password, email) => (session) => {
+      val (id, token) = Users.encryptInsert(name, Some(email), password)
+      Teachers.insert(id)
+      (id, name, Some(email), token)
     }
 
+    Database.forDataSource(DB.getDataSource()).withSession(s => {
+      JsonInsert(input)(insert.tupled)(JsonModels.userWithToken.tupled)(s).action
+    })
   }
 
 }
